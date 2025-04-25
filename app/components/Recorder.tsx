@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import Loader from './Loader';
 import { toast } from 'react-hot-toast';
+import Waveform from './Waveform';
 
 const Recorder = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -66,6 +67,7 @@ const Recorder = () => {
         >
           {isRecording ? 'Stop Recording' : 'Start Recording'}
         </button>
+      	{isRecording && <Waveform />}
       )}
     </div>
   );
