@@ -4,7 +4,7 @@ const config: Config = {
   content: [
     './app/**/*.{ts,tsx}',
     './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}'
+    './components/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
@@ -14,8 +14,8 @@ const config: Config = {
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: 0 },
-          '100%': { opacity: 1 },
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
       },
     },
