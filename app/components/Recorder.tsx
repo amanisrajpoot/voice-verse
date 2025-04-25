@@ -1,70 +1,74 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import toast from 'react-hot-toast';
+import React, { useState, useRef } from 'react';
+import Loader from './Loader';
+import { toast } from 'react-hot-toast';
 
-export default function Recorder() {
-  const [recording, setRecording] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const audioChunks = useRef<Blob[]>([]);
+const Recorder = () => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder.current = new MediaRecorder(stream);
+    try {
+      setIsRecording(true);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
 
-    mediaRecorder.current.ondataavailable = (e) => {
-      audioChunks.current.push(e.data);
-    };
+      const audioChunks: Blob[] = [];
+      mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+      mediaRecorder.onstop = async () => {
+        setIsLoading(true);
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
 
-    mediaRecorder.current.onstop = async () => {
-      const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-      const url = URL.createObjectURL(audioBlob);
-      setAudioUrl(url);
-
-      const formData = new FormData();
-      formData.append('file', audioBlob);
-
-      try {
-        setUploading(true);
-        await fetch('/api/entries', {
+        // Upload
+        const formData = new FormData();
+        formData.append('audio', audioBlob);
+        const res = await fetch('/api/process-audio', {
           method: 'POST',
           body: formData,
         });
-        toast.success('Recording saved!');
-      } catch (error) {
-        toast.error('Failed to save recording.');
-      } finally {
-        setUploading(false);
-      }
 
-      audioChunks.current = [];
-    };
+        const data = await res.json();
+        setIsLoading(false);
+        toast.success('Processing complete!');
+        console.log(data);
+      };
 
-    mediaRecorder.current.start();
-    setRecording(true);
+      mediaRecorder.start();
+      toast.success('Recording started...');
+    } catch (err) {
+      toast.error('Error accessing mic');
+    }
   };
 
   const stopRecording = () => {
-    mediaRecorder.current?.stop();
-    setRecording(false);
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+    toast.success('Recording stopped.');
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      {!recording ? (
-        <button onClick={startRecording} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 transition text-white rounded">
-          Start Recording
-        </button>
+    <div className="text-center space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight">Echoverse</h1>
+
+      {isLoading ? (
+        <Loader />
       ) : (
-        <button onClick={stopRecording} className="px-4 py-2 bg-red-500 hover:bg-red-600 transition text-white rounded">
-          Stop Recording
+        <button
+          onClick={isRecording ? stopRecording : startRecording}
+          className={`px-6 py-3 rounded-xl text-lg font-semibold transition duration-300 ease-in-out ${
+            isRecording
+              ? 'bg-red-600 hover:bg-red-700'
+              : 'bg-green-600 hover:bg-green-700'
+          }`}
+        >
+          {isRecording ? 'Stop Recording' : 'Start Recording'}
         </button>
       )}
-
-      {uploading && <p className="text-sm text-gray-500">Uploading...</p>}
-      {audioUrl && <audio controls src={audioUrl} className="mt-4" />}
     </div>
   );
-}
+};
+
+export default Recorder;
