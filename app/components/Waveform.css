@@ -1,0 +1,15 @@
+.waveform-container {
+  display: flex;
+  align-items: flex-end;
+  height: 60px;
+  gap: 2px;
+  justify-content: center;
+  padding: 8px;
+}
+
+.bar {
+  width: 3px;
+  background: #10b981; /* Tailwind green-500 */
+  border-radius: 2px;
+  transition: height 0.1s ease-in-out;
+}
