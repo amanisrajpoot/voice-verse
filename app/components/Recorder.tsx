@@ -51,12 +51,13 @@ const Recorder = () => {
   };
 
   return (
-    <div className="text-center space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Echoverse</h1>
+  <div className="text-center space-y-6">
+    <h1 className="text-2xl font-bold tracking-tight">Echoverse</h1>
 
-      {isLoading ? (
-        <Loader />
-      ) : (
+    {isLoading ? (
+      <Loader />
+    ) : (
+      <>
         <button
           onClick={isRecording ? stopRecording : startRecording}
           className={`px-6 py-3 rounded-xl text-lg font-semibold transition duration-300 ease-in-out ${
@@ -67,10 +68,11 @@ const Recorder = () => {
         >
           {isRecording ? 'Stop Recording' : 'Start Recording'}
         </button>
-      	{isRecording && <Waveform />}
-      )}
-    </div>
-  );
+        {isRecording && <Waveform />}
+      </>
+    )}
+  </div>
+);
 };
 
 export default Recorder;
