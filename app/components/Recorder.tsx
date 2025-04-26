@@ -13,26 +13,33 @@ type Recording = {
 export default function Recorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [mounted, setMounted] = useState(false); // <- NEW
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
-  const mimeTypeRef = useRef<string>('audio/webm'); // <--- NEW
+  const mimeTypeRef = useRef<string>('audio/webm');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('echoverse-recordings');
-      if (saved) setRecordings(JSON.parse(saved));
-    }
+    setMounted(true); // <- NEW
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('echoverse-recordings', JSON.stringify(recordings));
-  }, [recordings]);
+    if (mounted) {
+      const saved = localStorage.getItem('echoverse-recordings');
+      if (saved) setRecordings(JSON.parse(saved));
+    }
+  }, [mounted]);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('echoverse-recordings', JSON.stringify(recordings));
+    }
+  }, [recordings, mounted]);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Detect best format
+
       if (MediaRecorder.isTypeSupported('audio/mp4')) {
         mimeTypeRef.current = 'audio/mp4';
       } else if (MediaRecorder.isTypeSupported('audio/mpeg')) {
@@ -54,13 +61,12 @@ export default function Recorder() {
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks.current, { type: mimeTypeRef.current });
         const url = URL.createObjectURL(blob);
-        const timestamp = new Date().toLocaleString();
+        const timestamp = new Date().toLocaleString(); // Safe here inside event
+
         setRecordings((prev) => [...prev, { blob, url, timestamp }]);
         
-        // Stop the mic
         stream.getTracks().forEach(track => track.stop());
-        
-        // Save on server too (your original code kept)
+
         try {
           const formData = new FormData();
           formData.append('file', blob);
@@ -93,6 +99,8 @@ export default function Recorder() {
     toast('Deleted successfully!', { icon: '🗑️' });
   };
 
+  if (!mounted) return null; // <- NEW - hydration-safe rendering
+
   return (
     <div className="text-center space-y-6">
       <button
@@ -108,29 +116,35 @@ export default function Recorder() {
 
       {isRecording && <Waveform />}
 
-      <h3 className="text-sm font-semibold ">Recent Recordings</h3>
+      <h3 className="text-sm font-semibold">Recent Recordings</h3>
 
       {recordings.length > 0 ? (
         recordings
-          .slice(-69) // keeping your slice(-69) in case you had a reason
+          .slice(-69)
           .reverse()
           .map((rec, i) => (
             <div
               key={i}
-              className="flex items-center justify-between bg-white/10 p-3 rounded-xl shadow-sm"
+              className="flex items-center bg-white/10 p-4 rounded-2xl shadow-md space-x-6"
             >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-white/80">Recording {i + 1}</span>
-                <span className="text-xs text-white/50">{rec.timestamp}</span>
-              </div>
-              <audio controls src={rec.url} className="mx-4" />
+              <span className="text-base font-semibold text-white w-6 text-center">
+                {i + 1}. {" "}
+              </span>
+
+              <audio
+                controls
+                src={rec.url}
+                className="flex-1 h-10 rounded-md bg-white/20 backdrop-blur-sm"
+              />
+
               <button
                 onClick={() => deleteRecording(rec.url)}
-                className="text-sm text-red-400 hover:text-red-300"
+                className="text-red-400 hover:text-red-300 text-xs font-semibold px-4 py-2 border border-red-400 rounded-md hover:bg-red-400/10 transition"
               >
                 Delete
               </button>
             </div>
+
           ))
       ) : (
         <p className="text-white/50 text-sm">No recordings yet</p>
