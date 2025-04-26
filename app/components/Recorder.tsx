@@ -15,6 +15,7 @@ export default function Recorder() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
+  const mimeTypeRef = useRef<string>('audio/webm'); // <--- NEW
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -30,7 +31,17 @@ export default function Recorder() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Detect best format
+      if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeTypeRef.current = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/mpeg')) {
+        mimeTypeRef.current = 'audio/mpeg';
+      } else {
+        mimeTypeRef.current = 'audio/webm';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: mimeTypeRef.current });
       mediaRecorderRef.current = mediaRecorder;
       chunks.current = [];
 
@@ -41,7 +52,7 @@ export default function Recorder() {
       };
 
       mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks.current, { type: 'audio/webm' });
+        const blob = new Blob(chunks.current, { type: mimeTypeRef.current });
         const url = URL.createObjectURL(blob);
         const timestamp = new Date().toLocaleString();
         setRecordings((prev) => [...prev, { blob, url, timestamp }]);
@@ -49,7 +60,7 @@ export default function Recorder() {
         // Stop the mic
         stream.getTracks().forEach(track => track.stop());
         
-        // Save on server too
+        // Save on server too (your original code kept)
         try {
           const formData = new FormData();
           formData.append('file', blob);
@@ -60,10 +71,9 @@ export default function Recorder() {
         } catch (error) {
           console.error('Failed to save entry to server', error);
         }
-      
+
         toast.success('Recording saved');
       };
-      
 
       mediaRecorder.start();
       setIsRecording(true);
@@ -100,33 +110,31 @@ export default function Recorder() {
 
       <h3 className="text-sm font-semibold ">Recent Recordings</h3>
 
-
       {recordings.length > 0 ? (
-  recordings
-    .slice(-69)  // Take last 5 recordings only
-    .reverse()  // Show most recent on top
-    .map((rec, i) => (
-      <div
-        key={i}
-        className="flex items-center justify-between bg-white/10 p-3 rounded-xl shadow-sm"
-      >
-        <div className="flex flex-col items-start">
-          <span className="text-sm text-white/80">Recording {i + 1}</span>
-          <span className="text-xs text-white/50">{rec.timestamp}</span>
-        </div>
-        <audio controls src={rec.url} className="mx-4" />
-        <button
-          onClick={() => deleteRecording(rec.url)}
-          className="text-sm text-red-400 hover:text-red-300"
-        >
-          Delete
-        </button>
-      </div>
-    ))
-) : (
-  <p className="text-white/50 text-sm">No recordings yet</p>
-)}
-
+        recordings
+          .slice(-69) // keeping your slice(-69) in case you had a reason
+          .reverse()
+          .map((rec, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between bg-white/10 p-3 rounded-xl shadow-sm"
+            >
+              <div className="flex flex-col items-start">
+                <span className="text-sm text-white/80">Recording {i + 1}</span>
+                <span className="text-xs text-white/50">{rec.timestamp}</span>
+              </div>
+              <audio controls src={rec.url} className="mx-4" />
+              <button
+                onClick={() => deleteRecording(rec.url)}
+                className="text-sm text-red-400 hover:text-red-300"
+              >
+                Delete
+              </button>
+            </div>
+          ))
+      ) : (
+        <p className="text-white/50 text-sm">No recordings yet</p>
+      )}
     </div>
   );
 }
