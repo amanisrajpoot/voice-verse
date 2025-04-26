@@ -9,9 +9,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
+      <body className="bg-gray-950 text-white font-sans">
         {children}
-        <Toaster position="top-right" />
+        <Toaster position="top-right" toastOptions={{ duration: 2000 }} />
       </body>
     </html>
   );

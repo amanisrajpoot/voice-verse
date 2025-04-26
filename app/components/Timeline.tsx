@@ -3,49 +3,52 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
-interface Entry {
-  id: string;
+interface Recording {
+  blob: Blob;
   url: string;
-  timestamp: number;
+  timestamp: string;
 }
 
 export default function Timeline() {
-  const [entries, setEntries] = useState<Entry[]>([]);
-
-  const fetchEntries = async () => {
-    const res = await fetch('/api/entries');
-    const data = await res.json();
-    setEntries(data);
-  };
+  const [recordings, setRecordings] = useState<Recording[]>([]);
 
   useEffect(() => {
-    fetchEntries();
+    const saved = localStorage.getItem('echoverse-recordings');
+    if (saved) {
+      setRecordings(JSON.parse(saved));
+    }
   }, []);
 
-  const handleDelete = (id: string) => {
-    setEntries(prev => prev.filter(entry => entry.id !== id));
-    toast('Deleted from view!', { icon: '🗑️' });
+  const handleDelete = (url: string) => {
+    const updatedRecordings = recordings.filter(rec => rec.url !== url);
+    setRecordings(updatedRecordings);
+    localStorage.setItem('echoverse-recordings', JSON.stringify(updatedRecordings));
+    toast.success('Recording deleted');
   };
 
-  if (entries.length === 0) {
+  if (recordings.length === 0) {
     return (
-      <div className="flex flex-col items-center">
-        <p>No entries yet. Record something!</p>
-        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin mt-4 border-blue-400"></div>
+      <div className="flex flex-col items-center pt-10">
+        <p className="text-white/70 mb-4">No recordings yet. Go record something!</p>
+        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-blue-400"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {entries.map(entry => (
-        <div key={entry.id} className="p-4 border rounded shadow hover:shadow-lg transition duration-300">
-          <audio controls src={entry.url} className="w-full mb-2" />
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500">
-              {new Date(entry.timestamp).toLocaleString()}
-            </p>
-            <button onClick={() => handleDelete(entry.id)} className="text-sm text-red-500 hover:underline">
+      {recordings.map((rec, index) => (
+        <div
+          key={index}
+          className="p-4 border border-white/10 rounded-xl bg-white/5 shadow-md hover:shadow-lg transition duration-300"
+        >
+          <audio controls src={rec.url} className="w-full rounded mb-2" />
+          <div className="flex justify-between items-center text-sm text-white/70">
+            <span>{rec.timestamp}</span>
+            <button
+              onClick={() => handleDelete(rec.url)}
+              className="text-red-400 hover:text-red-300 transition"
+            >
               Delete
             </button>
           </div>

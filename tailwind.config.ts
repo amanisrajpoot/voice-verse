@@ -18,6 +18,15 @@ const config: Config = {
           '100%': { opacity: '1' },
         },
       },
+      colors: {
+        brand: {
+          blue: '#2563eb',
+          pink: '#ec4899',
+          green: '#10b981',
+          cyan: '#06b6d4',
+          dark: '#111827',
+        },
+      },
     },
   },
   plugins: [],
