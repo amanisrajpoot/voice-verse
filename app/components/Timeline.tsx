@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import Link from 'next/link';
 
 interface Recording {
-  blob: Blob;
   url: string;
   timestamp: string;
 }
@@ -13,47 +12,62 @@ export default function Timeline() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('echoverse-recordings');
-    if (saved) {
-      setRecordings(JSON.parse(saved));
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('echoverse-recordings');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Recording[];
+        setRecordings(parsed.slice(-10).reverse()); // Get latest 10
+      }
     }
   }, []);
 
-  const handleDelete = (url: string) => {
-    const updatedRecordings = recordings.filter(rec => rec.url !== url);
-    setRecordings(updatedRecordings);
-    localStorage.setItem('echoverse-recordings', JSON.stringify(updatedRecordings));
-    toast.success('Recording deleted');
-  };
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('echoverse-recordings');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Recording[];
+        setRecordings(parsed.slice(-10).reverse());
+      }
+    };
+  
+    window.addEventListener('storage', handleStorageChange);
+  
+    // Clean up the event listener on unmount
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+  
 
   if (recordings.length === 0) {
     return (
-      <div className="flex flex-col items-center pt-10">
-        <p className="text-white/70 mb-4">No recordings yet. Go record something!</p>
-        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-blue-400"></div>
+      <div className="text-center text-white/70">
+        No recordings yet. Start recording!
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {recordings.map((rec, index) => (
+    <div className="space-y-4">
+      {recordings.map((rec, i) => (
         <div
-          key={index}
-          className="p-4 border border-white/10 rounded-xl bg-white/5 shadow-md hover:shadow-lg transition duration-300"
+          key={i}
+          className="p-4 rounded-2xl bg-gradient-to-r from-indigo-700 to-purple-700 shadow-lg flex items-center justify-between"
         >
-          <audio controls src={rec.url} className="w-full rounded mb-2" />
-          <div className="flex justify-between items-center text-sm text-white/70">
-            <span>{rec.timestamp}</span>
-            <button
-              onClick={() => handleDelete(rec.url)}
-              className="text-red-400 hover:text-red-300 transition"
-            >
-              Delete
-            </button>
+          <div className="flex flex-col">
+            <span className="text-sm text-white/80">Recording {i + 1}</span>
+            <span className="text-xs text-white/50">{rec.timestamp}</span>
           </div>
+          <audio controls src={rec.url} className="h-10" />
         </div>
       ))}
+      <div className="text-center mt-4">
+        <Link href="/entries">
+          <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition">
+            View All
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }

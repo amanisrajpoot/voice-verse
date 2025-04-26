@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './Waveform.css';
 
 const Waveform = () => {
-  const [bars, setBars] = useState(Array(30).fill(0));
+  const [bars, setBars] = useState<number[]>(new Array(30).fill(0));
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setBars(bars.map(() => Math.random()));
+      setBars(bars => bars.map(() => Math.random()));
     }, 100);
     return () => clearInterval(interval);
-  }, [bars]);
+  }, []);
 
   return (
     <div className="waveform-container">

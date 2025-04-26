@@ -17,8 +17,10 @@ export default function Recorder() {
   const chunks = useRef<Blob[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('echoverse-recordings');
-    if (saved) setRecordings(JSON.parse(saved));
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('echoverse-recordings');
+      if (saved) setRecordings(JSON.parse(saved));
+    }
   }, []);
 
   useEffect(() => {
@@ -38,20 +40,36 @@ export default function Recorder() {
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         const timestamp = new Date().toLocaleString();
         setRecordings((prev) => [...prev, { blob, url, timestamp }]);
+        
+        // Stop the mic
         stream.getTracks().forEach(track => track.stop());
+        
+        // Save on server too
+        try {
+          const formData = new FormData();
+          formData.append('file', blob);
+          await fetch('/api/entries', {
+            method: 'POST',
+            body: formData,
+          });
+        } catch (error) {
+          console.error('Failed to save entry to server', error);
+        }
+      
         toast.success('Recording saved');
       };
+      
 
       mediaRecorder.start();
       setIsRecording(true);
-      toast.success('Recording started');
+      toast.success('Recording started', { icon: '🎙️' });
     } catch (err) {
-      toast.error('Microphone permission denied');
+      toast.error('Microphone permission denied', { icon: '🚫' });
     }
   };
 
@@ -61,22 +79,18 @@ export default function Recorder() {
   };
 
   const deleteRecording = (url: string) => {
-    const updated = recordings.filter(r => r.url !== url);
-    setRecordings(updated);
-    localStorage.setItem('echoverse-recordings', JSON.stringify(updated));
-    toast.success('Recording deleted');
+    setRecordings(prev => prev.filter(r => r.url !== url));
+    toast('Deleted successfully!', { icon: '🗑️' });
   };
 
   return (
     <div className="text-center space-y-6">
-      <h2 className="text-xl font-medium">
-        {isRecording ? 'Recording...' : 'Tap to Start Recording'}
-      </h2>
-
       <button
         onClick={isRecording ? stopRecording : startRecording}
-        className={`w-20 h-20 rounded-full flex items-center justify-center text-white transition-all ${
-          isRecording ? 'bg-red-500 animate-pulse' : 'bg-green-500 hover:bg-green-600'
+        className={`w-24 h-24 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${
+          isRecording 
+            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+            : 'bg-green-500 hover:bg-green-600'
         }`}
       >
         {isRecording ? 'Stop' : 'Start'}
@@ -84,30 +98,35 @@ export default function Recorder() {
 
       {isRecording && <Waveform />}
 
-      <div className="mt-8 space-y-4">
-        {recordings.length > 0 ? (
-          recordings.map((rec, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between bg-white/10 p-3 rounded-xl shadow-md"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-white/80">Recording {i + 1}</span>
-                <span className="text-xs text-white/50">{rec.timestamp}</span>
-              </div>
-              <audio controls src={rec.url} className="mx-4" />
-              <button
-                onClick={() => deleteRecording(rec.url)}
-                className="text-sm text-red-400 hover:text-red-300"
-              >
-                Delete
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="text-white/50 text-sm">No recordings yet</p>
-        )}
+      <h3 className="text-sm font-semibold ">Recent Recordings</h3>
+
+
+      {recordings.length > 0 ? (
+  recordings
+    .slice(-69)  // Take last 5 recordings only
+    .reverse()  // Show most recent on top
+    .map((rec, i) => (
+      <div
+        key={i}
+        className="flex items-center justify-between bg-white/10 p-3 rounded-xl shadow-sm"
+      >
+        <div className="flex flex-col items-start">
+          <span className="text-sm text-white/80">Recording {i + 1}</span>
+          <span className="text-xs text-white/50">{rec.timestamp}</span>
+        </div>
+        <audio controls src={rec.url} className="mx-4" />
+        <button
+          onClick={() => deleteRecording(rec.url)}
+          className="text-sm text-red-400 hover:text-red-300"
+        >
+          Delete
+        </button>
       </div>
+    ))
+) : (
+  <p className="text-white/50 text-sm">No recordings yet</p>
+)}
+
     </div>
   );
 }
